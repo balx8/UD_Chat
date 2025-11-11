@@ -84,12 +84,12 @@ class ChatClientApp:
                           font=("Segoe UI", 12, "bold"))
         header.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
 
-        # Left: messages
+        # left: messages
         tk.Label(self.chat_frame, text="Tin nhắn:").grid(row=1, column=0, sticky="w")
         self.chat_window = ScrolledText(self.chat_frame, height=18, width=80, state="disabled", wrap="word")
         self.chat_window.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=(0, 8))
 
-        # Right: online users
+        # right: online users
         tk.Label(self.chat_frame, text="👥 Online:").grid(row=1, column=2, sticky="w")
         self.users_list = tk.Listbox(self.chat_frame, height=18, width=24)
         self.users_list.grid(row=2, column=2, sticky="ns")
@@ -97,7 +97,7 @@ class ChatClientApp:
         self.pm_target = None
         self.users_list.bind("<Double-Button-1>", self.toggle_pm_target)
 
-        # Bottom: entry + send
+        # bottom: entry + send
         self.message_entry = tk.Entry(self.chat_frame)
         self.message_entry.grid(row=3, column=0, sticky="ew", pady=(8, 0))
         self.message_entry.bind("<Return>", lambda e: self.send_message())
@@ -108,20 +108,20 @@ class ChatClientApp:
         self.send_button = tk.Button(self.chat_frame, text="Gửi", width=10, command=self.send_message)
         self.send_button.grid(row=3, column=2, sticky="e", pady=(8, 0))
 
-        # Grid weights
+        # grid weights
         self.chat_frame.rowconfigure(2, weight=1)
         self.chat_frame.columnconfigure(0, weight=1)
         self.chat_frame.columnconfigure(1, weight=0)
         self.chat_frame.columnconfigure(2, weight=0)
 
-        # Configure tags once
+        # configure tags once
         self.chat_window.configure(font=("Segoe UI", 10))
         self.chat_window.tag_config("me", foreground="#1b76d1", font=("Segoe UI", 10, "bold"))
         self.chat_window.tag_config("pm_me", foreground="#6a1b9a", font=("Segoe UI", 10, "bold"))
         self.chat_window.tag_config("pm_in", foreground="#2e7d32", font=("Segoe UI", 10, "bold"))
         self.chat_window.tag_config("sys", foreground="#888888", font=("Segoe UI", 9, "italic"))
 
-        # Start background receive thread
+        # start background receive thread
         threading.Thread(target=self.receive_messages, daemon=True).start()
         self.safe_append("[Hệ thống]: Đăng nhập thành công.\n", "sys")
 
@@ -158,7 +158,7 @@ class ChatClientApp:
                 self.client_socket = None
                 messagebox.showerror("Đăng ký thất bại", resp.get("message", "Không xác định"))
                 return
-            # Nếu đăng ký ok, tiếp tục login ngay
+            # nếu đăng ký ok, tiếp tục login ngay
             self.username = username
             self.send_json({"type": "login", "username": username, "password": password})
             login_resp = next(self.iter_json_lines(), None)
