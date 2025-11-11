@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter.scrolledtext import ScrolledText
 
+
 class ChatClientApp:
     def __init__(self):
         # ---- single Tk root ----
@@ -24,6 +25,8 @@ class ChatClientApp:
     # =========================================================
     # helpers for JSON line protocol
     # =========================================================
+
+
 def send_json(self, obj):
     """
     Gửi một đối tượng Python (dict) dưới dạng JSON qua socket client.
@@ -59,12 +62,16 @@ def send_json(self, obj):
         self.login_frame = tk.Frame(self.root, padx=16, pady=16)
         self.login_frame.pack(fill="both", expand=True)
 
-        title = tk.Label(self.login_frame, text="Đăng nhập / Đăng ký - Chat App", font=("Segoe UI", 14, "bold"))
+        title = tk.Label(
+            self.login_frame, text="Đăng nhập / Đăng ký - Chat App", font=("Segoe UI", 14, "bold"))
         title.grid(row=0, column=0, columnspan=3, pady=(0, 12))
 
-        tk.Label(self.login_frame, text="Tên đăng nhập:").grid(row=1, column=0, sticky="e", pady=4, padx=(0, 8))
-        tk.Label(self.login_frame, text="Mật khẩu:").grid(row=2, column=0, sticky="e", pady=4, padx=(0, 8))
-        tk.Label(self.login_frame, text="Server (ip:port):").grid(row=3, column=0, sticky="e", pady=4, padx=(0, 8))
+        tk.Label(self.login_frame, text="Tên đăng nhập:").grid(
+            row=1, column=0, sticky="e", pady=4, padx=(0, 8))
+        tk.Label(self.login_frame, text="Mật khẩu:").grid(
+            row=2, column=0, sticky="e", pady=4, padx=(0, 8))
+        tk.Label(self.login_frame, text="Server (ip:port):").grid(
+            row=3, column=0, sticky="e", pady=4, padx=(0, 8))
 
         self.entry_username = tk.Entry(self.login_frame, width=28)
         self.entry_password = tk.Entry(self.login_frame, show="*", width=28)
@@ -76,8 +83,10 @@ def send_json(self, obj):
         self.entry_server.insert(0, "127.0.0.1:5555")
         self.entry_username.focus_set()
 
-        self.btn_register = tk.Button(self.login_frame, text="Đăng ký", width=12, command=self.handle_register)
-        self.btn_login = tk.Button(self.login_frame, text="Đăng nhập", width=12, command=self.handle_login)
+        self.btn_register = tk.Button(
+            self.login_frame, text="Đăng ký", width=12, command=self.handle_register)
+        self.btn_login = tk.Button(
+            self.login_frame, text="Đăng nhập", width=12, command=self.handle_login)
         self.btn_register.grid(row=4, column=0, pady=(10, 0))
         self.btn_login.grid(row=4, column=1, pady=(10, 0), sticky="w")
 
@@ -99,12 +108,16 @@ def send_json(self, obj):
         header.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
 
         # left: messages
-        tk.Label(self.chat_frame, text="Tin nhắn:").grid(row=1, column=0, sticky="w")
-        self.chat_window = ScrolledText(self.chat_frame, height=18, width=80, state="disabled", wrap="word")
-        self.chat_window.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=(0, 8))
+        tk.Label(self.chat_frame, text="Tin nhắn:").grid(
+            row=1, column=0, sticky="w")
+        self.chat_window = ScrolledText(
+            self.chat_frame, height=18, width=80, state="disabled", wrap="word")
+        self.chat_window.grid(row=2, column=0, columnspan=2,
+                              sticky="nsew", padx=(0, 8))
 
         # right: online users
-        tk.Label(self.chat_frame, text="👥 Online:").grid(row=1, column=2, sticky="w")
+        tk.Label(self.chat_frame, text="👥 Online:").grid(
+            row=1, column=2, sticky="w")
         self.users_list = tk.Listbox(self.chat_frame, height=18, width=24)
         self.users_list.grid(row=2, column=2, sticky="ns")
         # click đúp để bật/tắt chế độ PM tới user đang chọn
@@ -116,24 +129,35 @@ def send_json(self, obj):
         self.message_entry.grid(row=3, column=0, sticky="ew", pady=(8, 0))
         self.message_entry.bind("<Return>", lambda e: self.send_message())
 
-        self.pm_label = tk.Label(self.chat_frame, text="Chế độ: Công khai", fg="#555")
+        self.pm_label = tk.Label(
+            self.chat_frame, text="Chế độ: Công khai", fg="#555")
         self.pm_label.grid(row=3, column=1, sticky="w", padx=(8, 0))
 
-        self.send_button = tk.Button(self.chat_frame, text="Gửi", width=10, command=self.send_message)
+        self.send_button = tk.Button(
+            self.chat_frame, text="Gửi", width=10, command=self.send_message)
         self.send_button.grid(row=3, column=2, sticky="e", pady=(8, 0))
 
-        # grid weights
+        # Cấu hình trọng số (weight) cho các hàng và cột trong chat_frame
+        # - Hàng 2 sẽ mở rộng theo chiều dọc khi thay đổi kích thước cửa sổ
         self.chat_frame.rowconfigure(2, weight=1)
+
+        # - Cột 0 sẽ mở rộng theo chiều ngang, chiếm không gian còn lại
         self.chat_frame.columnconfigure(0, weight=1)
+
+        # - Cột 1 và cột 2 không mở rộng (giữ kích thước cố định)
         self.chat_frame.columnconfigure(1, weight=0)
         self.chat_frame.columnconfigure(2, weight=0)
 
         # configure tags once
         self.chat_window.configure(font=("Segoe UI", 10))
-        self.chat_window.tag_config("me", foreground="#1b76d1", font=("Segoe UI", 10, "bold"))
-        self.chat_window.tag_config("pm_me", foreground="#6a1b9a", font=("Segoe UI", 10, "bold"))
-        self.chat_window.tag_config("pm_in", foreground="#2e7d32", font=("Segoe UI", 10, "bold"))
-        self.chat_window.tag_config("sys", foreground="#888888", font=("Segoe UI", 9, "italic"))
+        self.chat_window.tag_config(
+            "me", foreground="#1b76d1", font=("Segoe UI", 10, "bold"))
+        self.chat_window.tag_config(
+            "pm_me", foreground="#6a1b9a", font=("Segoe UI", 10, "bold"))
+        self.chat_window.tag_config(
+            "pm_in", foreground="#2e7d32", font=("Segoe UI", 10, "bold"))
+        self.chat_window.tag_config(
+            "sys", foreground="#888888", font=("Segoe UI", 9, "italic"))
 
         # start background receive thread
         threading.Thread(target=self.receive_messages, daemon=True).start()
