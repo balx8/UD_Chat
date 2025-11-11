@@ -217,38 +217,62 @@ def send_json(self, obj):
             messagebox.showerror("Lỗi đăng ký", f"{e}")
 
     def handle_login(self):
-        username = self.entry_username.get().strip()
-        password = self.entry_password.get().strip()
-        if not username or not password:
-            messagebox.showwarning("Thiếu thông tin", "Hãy nhập Tên đăng nhập và Mật khẩu.")
+     """
+    Xử lý đăng nhập khi người dùng nhấn nút Login hoặc Enter.
+    Bước thực hiện:
+    1. Lấy username và password từ các ô nhập liệu.
+    2. Kiểm tra xem có thiếu thông tin không, nếu thiếu thì cảnh báo và dừng.
+    3. Kết nối tới server (_connect).
+    4. Gửi gói JSON đăng nhập {"type": "login", "username": ..., "password": ...}.
+    5. Nhận phản hồi từ server:
+       - Nếu không nhận được phản hồi hoặc phản hồi không hợp lệ → raise lỗi.
+       - Nếu đăng nhập thất bại → đóng socket, thông báo lỗi.
+    6. Nếu đăng nhập thành công → đánh dấu connected=True và xây dựng giao diện chat.
+    7. Nếu có lỗi trong quá trình kết nối hoặc đăng nhập → đóng socket nếu còn mở, báo lỗi.
+    """
+    # Lấy thông tin username và password
+    username = self.entry_username.get().strip()
+    password = self.entry_password.get().strip()
+
+    # Kiểm tra thông tin bắt buộc
+    if not username or not password:
+        messagebox.showwarning("Thiếu thông tin", "Hãy nhập Tên đăng nhập và Mật khẩu.")
+        return
+
+    try:
+        # Kết nối tới server
+        self._connect()
+        self.username = username
+
+        # Gửi gói login
+        self.send_json({"type": "login", "username": username, "password": password})
+
+        # Nhận phản hồi từ server
+        resp = next(self.iter_json_lines(), None)
+        if not resp or resp.get("type") != "login_result":
+            raise RuntimeError("Phản hồi đăng nhập không hợp lệ")
+
+        # Nếu đăng nhập thất bại
+        if not resp.get("ok"):
+            self.client_socket.close()
+            self.client_socket = None
+            messagebox.showerror("Đăng nhập thất bại", resp.get("message", "Không xác định"))
             return
 
-        try:
-            self._connect()
-            self.username = username
-            self.send_json({"type": "login", "username": username, "password": password})
-            resp = next(self.iter_json_lines(), None)
-            if not resp or resp.get("type") != "login_result":
-                raise RuntimeError("Phản hồi đăng nhập không hợp lệ")
-            if not resp.get("ok"):
+        # Đăng nhập thành công
+        self.connected = True
+        self.build_chat_ui()  # Xây dựng giao diện chat
+
+    except Exception as e:
+        # Xử lý lỗi kết nối/đăng nhập
+        self.connected = False
+        if self.client_socket:
+            try:
                 self.client_socket.close()
-                self.client_socket = None
-                messagebox.showerror("Đăng nhập thất bại", resp.get("message", "Không xác định"))
-                return
-
-            self.connected = True
-            self.build_chat_ui()
-
-        except Exception as e:
-            self.connected = False
-            if self.client_socket:
-                try:
-                    self.client_socket.close()
-                except:
-                    pass
-            self.client_socket = None
-            messagebox.showerror("Không thể kết nối", f"Lỗi: {e}")
-
+            except:
+                pass
+        self.client_socket = None
+        messagebox.showerror("Không thể kết nối", f"Lỗi: {e}")
     # =========================================================
     # CHAT ACTIONS
     # =========================================================
