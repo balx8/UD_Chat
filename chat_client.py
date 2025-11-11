@@ -24,9 +24,22 @@ class ChatClientApp:
     # =========================================================
     # helpers for JSON line protocol
     # =========================================================
-    def send_json(self, obj):
-        data = (json.dumps(obj, ensure_ascii=False) + "\n").encode("utf-8")
-        self.client_socket.sendall(data)
+def send_json(self, obj):
+    """
+    Gửi một đối tượng Python (dict) dưới dạng JSON qua socket client.
+    - Mỗi gói kết thúc bằng ký tự xuống dòng '\n' để phía nhận tách gói dễ dàng.
+    """
+    try:
+        # Chuyển dict thành chuỗi JSON (giữ nguyên Unicode)
+        data_str = json.dumps(obj, ensure_ascii=False) + "\n"
+        # Mã hóa UTF-8 để gửi qua socket
+        data_bytes = data_str.encode("utf-8")
+        # Gửi toàn bộ dữ liệu qua socket
+        self.client_socket.sendall(data_bytes)
+    except Exception as e:
+        # Nếu lỗi, có thể log hoặc bỏ qua tùy yêu cầu
+        # print(f"Lỗi khi gửi JSON: {e}")
+        pass
 
     def iter_json_lines(self):
         f = self.client_socket.makefile("r", encoding="utf-8", newline="\n")
@@ -68,7 +81,8 @@ class ChatClientApp:
         self.btn_register.grid(row=4, column=0, pady=(10, 0))
         self.btn_login.grid(row=4, column=1, pady=(10, 0), sticky="w")
 
-        # enter để đăng nhập
+        # Bắt sự kiện nhấn Enter (Return) trên cửa sổ root
+        # Khi người dùng nhấn Enter, gọi phương thức handle_login()
         self.root.bind("<Return>", lambda e: self.handle_login())
 
     def build_chat_ui(self):
