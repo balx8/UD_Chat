@@ -328,7 +328,7 @@ class ChatClientApp:
         for u in users:
             if u:
                 self.users_list.insert("end", u)
-        # nếu mục tiêu PM không còn online thì chuyển về công khai
+        #Nếu người này đã là PM target hiện tại → hủy chọn (trở về chế độ công khai)
         if self.pm_target and self.pm_target not in users:
             self.pm_target = None
             self.pm_label.config(text="Chế độ: Công khai", fg="#555")
@@ -339,7 +339,7 @@ class ChatClientApp:
     def on_close(self):
         try:
             if self.connected and self.client_socket:
-                # gửi tín hiệu quit cho đẹp (server sẽ cleanup)
+                # Gửi tín hiệu "quit" để thoát một cách gọn gàng, server sẽ thực hiện cleanup
                 self.send_json({"type": "quit"})
         except:
             pass
