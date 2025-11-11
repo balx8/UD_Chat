@@ -158,7 +158,7 @@ class ChatClientApp:
                 self.client_socket = None
                 messagebox.showerror("Đăng ký thất bại", resp.get("message", "Không xác định"))
                 return
-            # nếu đăng ký ok, tiếp tục login ngay
+            # Nếu đăng ký ok, tiếp tục login ngay
             self.username = username
             self.send_json({"type": "login", "username": username, "password": password})
             login_resp = next(self.iter_json_lines(), None)
@@ -215,12 +215,12 @@ class ChatClientApp:
     # CHAT ACTIONS
     # =========================================================
     def toggle_pm_target(self, event=None):
-        # double click on a user -> set/unset PM target
+        #  Nhấp đúp để bật/tắt người nhận tin nhắn riêng (PM target)
         try:
             sel = self.users_list.get(self.users_list.curselection())
         except:
             return
-        # ignore selecting myself
+        # Bỏ qua nếu nhấp vào chính tài khoản của mình.
         if sel == self.username:
             self.pm_target = None
             self.pm_label.config(text="Chế độ: Công khai", fg="#555")
