@@ -201,20 +201,32 @@ def broadcast(self, message, exclude=None):
         self.broadcast({"type": "presence", "users": online})
 
     def send_dm(self, from_user, to_user, obj):
-        with self.lock:
-            to_sock = self.user_sockets.get(to_user)
-            from_sock = self.user_sockets.get(from_user)
-        if to_sock:
-            try:
-                send_json(to_sock, obj)  # Tới người nhận
-            except:
-                pass
-        # Gửi bản sao cho người gửi (để họ thấy PM đã gửi)
-        if from_sock:
-            try:
-                send_json(from_sock, obj)
-            except:
-                pass
+    
+     """ Gửi tin nhắn riêng (Direct Message) từ from_user tới to_user.
+    - Đảm bảo thread-safe bằng self.lock khi truy xuất user_sockets.
+    - Nếu to_user đang online, gửi gói JSON tới họ.
+    - Đồng thời gửi bản sao gói JSON cho from_user để họ thấy PM đã được gửi.""" 
+    
+
+    # Lấy socket của người nhận và người gửi
+    with self.lock:
+        to_sock = self.user_sockets.get(to_user)
+        from_sock = self.user_sockets.get(from_user)
+
+    # Gửi tới người nhận nếu họ online
+    if to_sock:
+        try:
+            send_json(to_sock, obj)
+        except Exception as e:
+            # Bỏ qua lỗi gửi
+            pass
+
+    # Gửi bản sao cho người gửi để họ thấy tin nhắn đã gửi
+    if from_sock:
+        try:
+            send_json(from_sock, obj)
+        except Exception as e:
+            pass
 
 if __name__ == "__main__":
     server = ChatServer()
