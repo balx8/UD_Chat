@@ -21,17 +21,27 @@ def send_json(sock, obj):
     data = (json.dumps(obj, ensure_ascii=False) + "\n").encode("utf-8")
     sock.sendall(data)
 
-def iter_json_lines(sock):
-    """Đọc từng JSON line từ socket."""
-    f = sock.makefile("r", encoding="utf-8", newline="\n")
-    for line in f:
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            yield json.loads(line)
-        except json.JSONDecodeError:
-            yield {"type": "system", "text": f"JSON không hợp lệ: {line[:50]}..."}
+def iter_json_packets(sock):
+    """
+    Đọc từng gói JSON từ socket hoặc file-like object.
+    - Bỏ qua dòng rỗng.
+    - Nếu JSON không hợp lệ, trả về gói thông báo lỗi hệ thống.
+    """
+    # Chuyển socket thành file-like object để đọc dòng
+    with sock.makefile("r", encoding="utf-8", newline="\n") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue  # Bỏ qua dòng rỗng
+            try:
+                # Trả về dict JSON nếu hợp lệ
+                yield json.loads(line)
+            except json.JSONDecodeError:
+                # Nếu lỗi JSON, trả về gói thông báo lỗi
+                yield {
+                    "type": "system",
+                    "text": f"JSON không hợp lệ: {line[:50]}..."
+                }
 
 class ChatServer:
     def __init__(self, host='127.0.0.1', port=5555):
@@ -159,16 +169,28 @@ class ChatServer:
                 return False, "Tài khoản đang đăng nhập ở nơi khác"
         return True, "Đăng nhập thành công"
 
-    def broadcast(self, obj, exclude=None):
-        with self.lock:
-            targets = list(self.clients.items())
-        for sock, uname in targets:
-            if exclude and uname == exclude:
-                continue
-            try:
-                send_json(sock, obj)
-            except:
-                pass
+def broadcast(self, message, exclude=None):
+    """
+    Gửi message (dict JSON) tới tất cả client đang kết nối.
+    - exclude: tên người dùng để bỏ qua khi gửi (không gửi cho họ)
+    """
+    # Lấy danh sách client hiện tại (sao chép để tránh thay đổi khi lặp)
+    with self.lock:
+        targets = list(self.clients.items())  # [(socket, username), ...]
+
+    for sock, uname in targets:
+        # Bỏ qua user cần exclude
+        if exclude and uname == exclude:
+            continue
+
+        try:
+            # Gửi gói JSON tới client
+            send_json(sock, message)
+        except Exception as e:
+            # Nếu gửi thất bại, bỏ qua để không ảnh hưởng các client khác
+            # Có thể log lỗi ở đây nếu muốn
+            # print(f"Lỗi khi gửi tới {uname}: {e}")
+            pass
 
     def broadcast_system(self, text, exclude=None):
         self.broadcast({"type": "system", "text": text}, exclude=exclude)
@@ -187,7 +209,7 @@ class ChatServer:
                 send_json(to_sock, obj)  # Tới người nhận
             except:
                 pass
-        # Gửi bản sao tin nhắn cho người gửi, để họ thấy PM đã được gửi
+        # Gửi bản sao cho người gửi (để họ thấy PM đã gửi)
         if from_sock:
             try:
                 send_json(from_sock, obj)
