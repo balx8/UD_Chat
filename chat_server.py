@@ -9,7 +9,7 @@ USERS_FILE = Path("users.json")
 def load_users():
     if USERS_FILE.exists():
         return json.loads(USERS_FILE.read_text(encoding="utf-8"))
-    # tài khoản mẫu lần đầu
+    # Tài khoản mẫu lần đầu
     users = {"admin": "admin123", "user1": "pass1", "user2": "pass2"}
     USERS_FILE.write_text(json.dumps(users, ensure_ascii=False, indent=2), encoding="utf-8")
     return users
@@ -70,9 +70,9 @@ class ChatServer:
                 send_json(client_socket, {"type": "register_result", "ok": ok, "message": msg})
                 if not ok:
                     client_socket.close(); return
-                # cho phép đăng nhập tiếp bằng gói login
+                # Cho phép đăng nhập tiếp bằng gói login
 
-                # đọc gói tiếp theo (login)
+                # Đọc gói tiếp theo (login)
                 first = next(iter_json_lines(client_socket), None)
                 if not first:
                     client_socket.close(); return
@@ -88,7 +88,7 @@ class ChatServer:
             if not ok:
                 client_socket.close(); return
 
-            # đăng nhập thành công
+            # Đăng nhập thành công
             with self.lock:
                 self.clients[client_socket] = username
                 self.user_sockets[username] = client_socket
@@ -124,7 +124,7 @@ class ChatServer:
         except Exception as e:
             print(f"[ERROR] {e}")
         finally:
-            # cleanup
+            # Cleanup
             with self.lock:
                 if client_socket in self.clients:
                     uname = self.clients.pop(client_socket)
@@ -139,7 +139,7 @@ class ChatServer:
                 self.broadcast_system(f"[{uname}] đã rời khỏi phòng chat!", exclude=None)
                 self.send_presence()
 
-    # ---------- helpers ----------
+    # ---------- Helpers ----------
     def handle_register(self, username, password):
         if not username or not password:
             return False, "Thiếu username/password"
@@ -184,10 +184,10 @@ class ChatServer:
             from_sock = self.user_sockets.get(from_user)
         if to_sock:
             try:
-                send_json(to_sock, obj)  # tới người nhận
+                send_json(to_sock, obj)  # Tới người nhận
             except:
                 pass
-        # gửi bản sao cho người gửi (để họ thấy PM đã gửi)
+        # Gửi bản sao cho người gửi (để họ thấy PM đã gửi)
         if from_sock:
             try:
                 send_json(from_sock, obj)
