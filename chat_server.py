@@ -9,7 +9,7 @@ USERS_FILE = Path("users.json")
 def load_users():
     if USERS_FILE.exists():
         return json.loads(USERS_FILE.read_text(encoding="utf-8"))
-    # Tài khoản mẫu lần đầu
+  # Tài khoản mẫu được sử dụng lần đầu
     users = {"admin": "admin123", "user1": "pass1", "user2": "pass2"}
     USERS_FILE.write_text(json.dumps(users, ensure_ascii=False, indent=2), encoding="utf-8")
     return users
@@ -58,7 +58,7 @@ class ChatServer:
     def handle_client(self, client_socket):
         username = None
         try:
-            # Bước 1: chờ gói register/login
+            # Bước 1: Chờ nhận gói dữ liệu register hoặc login từ client
             first = next(iter_json_lines(client_socket), None)
             if not first:
                 client_socket.close(); return
@@ -70,9 +70,9 @@ class ChatServer:
                 send_json(client_socket, {"type": "register_result", "ok": ok, "message": msg})
                 if not ok:
                     client_socket.close(); return
-                # Cho phép đăng nhập tiếp bằng gói login
+               # Cho phép người dùng tiếp tục đăng nhập bằng gói login
 
-                # Đọc gói tiếp theo (login)
+                # Đọc gói dữ liệu tiếp theo (login)
                 first = next(iter_json_lines(client_socket), None)
                 if not first:
                     client_socket.close(); return
@@ -187,7 +187,7 @@ class ChatServer:
                 send_json(to_sock, obj)  # Tới người nhận
             except:
                 pass
-        # Gửi bản sao cho người gửi (để họ thấy PM đã gửi)
+        # Gửi bản sao tin nhắn cho người gửi, để họ thấy PM đã được gửi
         if from_sock:
             try:
                 send_json(from_sock, obj)
