@@ -376,14 +376,27 @@ def send_json(self, obj):
     # UI HELPERS
     # =========================================================
     def safe_append(self, text, tag=None):
-        """Append text to chat window safely (must be called in main thread)."""
-        self.chat_window.configure(state="normal")
-        if tag:
-            self.chat_window.insert("end", text, tag)
-        else:
-            self.chat_window.insert("end", text)
-        self.chat_window.see("end")
-        self.chat_window.configure(state="disabled")
+     """
+    Ghi văn bản vào cửa sổ chat một cách an toàn.
+    Lưu ý: phải gọi trong main thread của Tkinter để tránh lỗi giao diện.
+
+    Tham số:
+    - text: chuỗi cần hiển thị.
+    - tag: (tùy chọn) tên tag để áp dụng style (màu sắc, font, v.v.).
+
+    Bước thực hiện:
+    1. Cho phép chỉnh sửa chat_window (state="normal").
+    2. Chèn text vào cuối nội dung, có hoặc không có tag.
+    3. Cuộn xuống cuối để luôn hiển thị tin nhắn mới.
+    4. Khóa lại chat_window (state="disabled") để người dùng không chỉnh sửa.
+    """
+    self.chat_window.configure(state="normal")
+    if tag:
+        self.chat_window.insert("end", text, tag)
+    else:
+        self.chat_window.insert("end", text)
+    self.chat_window.see("end")
+    self.chat_window.configure(state="disabled")
 
     def update_online_users(self, users):
         self.users_list.delete(0, "end")
