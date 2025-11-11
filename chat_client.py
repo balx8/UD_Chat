@@ -1,4 +1,4 @@
-# chat_client.py
+# Chat_client.py
 import socket
 import threading
 import json
@@ -8,21 +8,21 @@ from tkinter.scrolledtext import ScrolledText
 
 class ChatClientApp:
     def __init__(self):
-        # ---- Single Tk root ----
+        # ---- single Tk root ----
         self.root = tk.Tk()
         self.root.title("Chat App")
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        # Socket & state
+        # socket & state
         self.client_socket = None
         self.username = ""
         self.connected = False
 
-        # Build Login UI first
+        # build Login UI first
         self.build_login_ui()
 
     # =========================================================
-    # Helpers for JSON line protocol
+    # helpers for JSON line protocol
     # =========================================================
     def send_json(self, obj):
         data = (json.dumps(obj, ensure_ascii=False) + "\n").encode("utf-8")
@@ -68,11 +68,11 @@ class ChatClientApp:
         self.btn_register.grid(row=4, column=0, pady=(10, 0))
         self.btn_login.grid(row=4, column=1, pady=(10, 0), sticky="w")
 
-        # Enter để đăng nhập
+        # enter để đăng nhập
         self.root.bind("<Return>", lambda e: self.handle_login())
 
     def build_chat_ui(self):
-        # Hủy login frame & bỏ bind Enter cũ để tránh TclError khi widget bị destroy
+        # hủy login frame & bỏ bind Enter cũ để tránh TclError khi widget bị destroy
         self.root.unbind("<Return>")
         self.login_frame.destroy()
 
