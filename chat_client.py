@@ -180,41 +180,74 @@ def send_json(self, obj):
         self.client_socket.connect((host, port))
 
     def handle_register(self):
-        username = self.entry_username.get().strip()
-        password = self.entry_password.get().strip()
-        if not username or not password:
-            messagebox.showwarning("Thiếu thông tin", "Hãy nhập Tên đăng nhập và Mật khẩu.")
-            return
-        try:
-            self._connect()
-            self.send_json({"type": "register", "username": username, "password": password})
-            resp = next(self.iter_json_lines(), None)
-            if not resp or resp.get("type") != "register_result":
-                raise RuntimeError("Phản hồi đăng ký không hợp lệ")
-            if not resp.get("ok"):
-                self.client_socket.close()
-                self.client_socket = None
-                messagebox.showerror("Đăng ký thất bại", resp.get("message", "Không xác định"))
-                return
-            # Nếu đăng ký ok, tiếp tục login ngay
-            self.username = username
-            self.send_json({"type": "login", "username": username, "password": password})
-            login_resp = next(self.iter_json_lines(), None)
-            if login_resp and login_resp.get("ok"):
-                self.connected = True
-                self.build_chat_ui()
-            else:
-                self.client_socket.close()
-                self.client_socket = None
-                messagebox.showerror("Đăng nhập thất bại", (login_resp or {}).get("message", "Không xác định"))
-        except Exception as e:
-            if self.client_socket:
-                try:
-                    self.client_socket.close()
-                except:
-                    pass
+     """
+    Xử lý đăng ký tài khoản khi người dùng nhấn nút Register.
+    Bước thực hiện:
+    1. Lấy username và password từ các ô nhập liệu.
+    2. Kiểm tra xem có thiếu thông tin không, nếu thiếu thì cảnh báo và dừng.
+    3. Kết nối tới server (_connect).
+    4. Gửi gói JSON đăng ký {"type": "register", "username": ..., "password": ...}.
+    5. Nhận phản hồi từ server:
+       - Nếu không nhận được phản hồi hoặc phản hồi không hợp lệ → raise lỗi.
+       - Nếu đăng ký thất bại → đóng socket, thông báo lỗi.
+    6. Nếu đăng ký thành công → tự động gửi gói login ngay:
+       - Nhận phản hồi login.
+       - Nếu login thành công → đánh dấu connected=True và xây dựng giao diện chat.
+       - Nếu login thất bại → đóng socket, thông báo lỗi.
+    7. Nếu có lỗi trong quá trình kết nối hoặc đăng ký → đóng socket nếu còn mở, báo lỗi.
+    """
+    # Lấy thông tin username và password
+    username = self.entry_username.get().strip()
+    password = self.entry_password.get().strip()
+
+    # Kiểm tra thông tin bắt buộc
+    if not username or not password:
+        messagebox.showwarning("Thiếu thông tin", "Hãy nhập Tên đăng nhập và Mật khẩu.")
+        return
+
+    try:
+        # Kết nối tới server
+        self._connect()
+
+        # Gửi gói đăng ký
+        self.send_json({"type": "register", "username": username, "password": password})
+
+        # Nhận phản hồi từ server
+        resp = next(self.iter_json_lines(), None)
+        if not resp or resp.get("type") != "register_result":
+            raise RuntimeError("Phản hồi đăng ký không hợp lệ")
+
+        # Nếu đăng ký thất bại
+        if not resp.get("ok"):
+            self.client_socket.close()
             self.client_socket = None
-            messagebox.showerror("Lỗi đăng ký", f"{e}")
+            messagebox.showerror("Đăng ký thất bại", resp.get("message", "Không xác định"))
+            return
+
+        # Nếu đăng ký thành công, tiếp tục login ngay
+        self.username = username
+        self.send_json({"type": "login", "username": username, "password": password})
+        login_resp = next(self.iter_json_lines(), None)
+        if login_resp and login_resp.get("ok"):
+            self.connected = True
+            self.build_chat_ui()
+        else:
+            self.client_socket.close()
+            self.client_socket = None
+            messagebox.showerror(
+                "Đăng nhập thất bại",
+                (login_resp or {}).get("message", "Không xác định")
+            )
+
+    except Exception as e:
+        # Xử lý lỗi kết nối/đăng ký
+        if self.client_socket:
+            try:
+                self.client_socket.close()
+            except:
+                pass
+        self.client_socket = None
+        messagebox.showerror("Lỗi đăng ký", f"{e}")
 
     def handle_login(self):
      """
