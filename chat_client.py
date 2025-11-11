@@ -333,9 +333,13 @@ class ChatClientApp:
             self.pm_target = None
             self.pm_label.config(text="Chế độ: Công khai", fg="#555")
 
-    # =========================================================
-    # APP LIFECYCLE
-    # =========================================================
+   # APP LIFECYCLE: Vòng đời ứng dụng
+# Bao gồm các trạng thái và sự kiện mà ứng dụng trải qua từ khi khởi chạy đến khi đóng:
+# - Khởi tạo (Init)
+# - Hoạt động (Active / Running)
+# - Tạm dừng (Paused / Background)
+# - Dừng / Đóng (Stopped / Terminated)
+# Quản lý vòng đời giúp xử lý tài nguyên, lưu trạng thái, và phản hồi sự kiện đúng thời điểm
     def on_close(self):
         try:
             if self.connected and self.client_socket:
