@@ -1,4 +1,4 @@
-# chat_client.py
+# Chat_client.py
 import socket
 import threading
 import json
@@ -6,27 +6,43 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter.scrolledtext import ScrolledText
 
+
 class ChatClientApp:
     def __init__(self):
-        # ---- Single Tk root ----
+        # ---- single Tk root ----
         self.root = tk.Tk()
         self.root.title("Chat App")
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        # Socket & state
+        # socket & state
         self.client_socket = None
         self.username = ""
         self.connected = False
 
-        # Build Login UI first
+        # build Login UI first
         self.build_login_ui()
 
     # =========================================================
-    # Helpers for JSON line protocol
+    # helpers for JSON line protocol
     # =========================================================
-    def send_json(self, obj):
-        data = (json.dumps(obj, ensure_ascii=False) + "\n").encode("utf-8")
-        self.client_socket.sendall(data)
+
+
+def send_json(self, obj):
+    """
+    Gửi một đối tượng Python (dict) dưới dạng JSON qua socket client.
+    - Mỗi gói kết thúc bằng ký tự xuống dòng '\n' để phía nhận tách gói dễ dàng.
+    """
+    try:
+        # Chuyển dict thành chuỗi JSON (giữ nguyên Unicode)
+        data_str = json.dumps(obj, ensure_ascii=False) + "\n"
+        # Mã hóa UTF-8 để gửi qua socket
+        data_bytes = data_str.encode("utf-8")
+        # Gửi toàn bộ dữ liệu qua socket
+        self.client_socket.sendall(data_bytes)
+    except Exception as e:
+        # Nếu lỗi, có thể log hoặc bỏ qua tùy yêu cầu
+        # print(f"Lỗi khi gửi JSON: {e}")
+        pass
 
     def iter_json_lines(self):
         f = self.client_socket.makefile("r", encoding="utf-8", newline="\n")
@@ -46,12 +62,16 @@ class ChatClientApp:
         self.login_frame = tk.Frame(self.root, padx=16, pady=16)
         self.login_frame.pack(fill="both", expand=True)
 
-        title = tk.Label(self.login_frame, text="Đăng nhập / Đăng ký - Chat App", font=("Segoe UI", 14, "bold"))
+        title = tk.Label(
+            self.login_frame, text="Đăng nhập / Đăng ký - Chat App", font=("Segoe UI", 14, "bold"))
         title.grid(row=0, column=0, columnspan=3, pady=(0, 12))
 
-        tk.Label(self.login_frame, text="Tên đăng nhập:").grid(row=1, column=0, sticky="e", pady=4, padx=(0, 8))
-        tk.Label(self.login_frame, text="Mật khẩu:").grid(row=2, column=0, sticky="e", pady=4, padx=(0, 8))
-        tk.Label(self.login_frame, text="Server (ip:port):").grid(row=3, column=0, sticky="e", pady=4, padx=(0, 8))
+        tk.Label(self.login_frame, text="Tên đăng nhập:").grid(
+            row=1, column=0, sticky="e", pady=4, padx=(0, 8))
+        tk.Label(self.login_frame, text="Mật khẩu:").grid(
+            row=2, column=0, sticky="e", pady=4, padx=(0, 8))
+        tk.Label(self.login_frame, text="Server (ip:port):").grid(
+            row=3, column=0, sticky="e", pady=4, padx=(0, 8))
 
         self.entry_username = tk.Entry(self.login_frame, width=28)
         self.entry_password = tk.Entry(self.login_frame, show="*", width=28)
@@ -63,16 +83,19 @@ class ChatClientApp:
         self.entry_server.insert(0, "127.0.0.1:5555")
         self.entry_username.focus_set()
 
-        self.btn_register = tk.Button(self.login_frame, text="Đăng ký", width=12, command=self.handle_register)
-        self.btn_login = tk.Button(self.login_frame, text="Đăng nhập", width=12, command=self.handle_login)
+        self.btn_register = tk.Button(
+            self.login_frame, text="Đăng ký", width=12, command=self.handle_register)
+        self.btn_login = tk.Button(
+            self.login_frame, text="Đăng nhập", width=12, command=self.handle_login)
         self.btn_register.grid(row=4, column=0, pady=(10, 0))
         self.btn_login.grid(row=4, column=1, pady=(10, 0), sticky="w")
 
-        # Enter để đăng nhập
+        # Bắt sự kiện nhấn Enter (Return) trên cửa sổ root
+        # Khi người dùng nhấn Enter, gọi phương thức handle_login()
         self.root.bind("<Return>", lambda e: self.handle_login())
 
     def build_chat_ui(self):
-        # Hủy login frame & bỏ bind Enter cũ để tránh TclError khi widget bị destroy
+        # hủy login frame & bỏ bind Enter cũ để tránh TclError khi widget bị destroy
         self.root.unbind("<Return>")
         self.login_frame.destroy()
 
@@ -84,44 +107,59 @@ class ChatClientApp:
                           font=("Segoe UI", 12, "bold"))
         header.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
 
-        # Left: messages
-        tk.Label(self.chat_frame, text="Tin nhắn:").grid(row=1, column=0, sticky="w")
-        self.chat_window = ScrolledText(self.chat_frame, height=18, width=80, state="disabled", wrap="word")
-        self.chat_window.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=(0, 8))
+        # left: messages
+        tk.Label(self.chat_frame, text="Tin nhắn:").grid(
+            row=1, column=0, sticky="w")
+        self.chat_window = ScrolledText(
+            self.chat_frame, height=18, width=80, state="disabled", wrap="word")
+        self.chat_window.grid(row=2, column=0, columnspan=2,
+                              sticky="nsew", padx=(0, 8))
 
-        # Right: online users
-        tk.Label(self.chat_frame, text="👥 Online:").grid(row=1, column=2, sticky="w")
+        # right: online users
+        tk.Label(self.chat_frame, text="👥 Online:").grid(
+            row=1, column=2, sticky="w")
         self.users_list = tk.Listbox(self.chat_frame, height=18, width=24)
         self.users_list.grid(row=2, column=2, sticky="ns")
         # click đúp để bật/tắt chế độ PM tới user đang chọn
         self.pm_target = None
         self.users_list.bind("<Double-Button-1>", self.toggle_pm_target)
 
-        # Bottom: entry + send
+        # bottom: entry + send
         self.message_entry = tk.Entry(self.chat_frame)
         self.message_entry.grid(row=3, column=0, sticky="ew", pady=(8, 0))
         self.message_entry.bind("<Return>", lambda e: self.send_message())
 
-        self.pm_label = tk.Label(self.chat_frame, text="Chế độ: Công khai", fg="#555")
+        self.pm_label = tk.Label(
+            self.chat_frame, text="Chế độ: Công khai", fg="#555")
         self.pm_label.grid(row=3, column=1, sticky="w", padx=(8, 0))
 
-        self.send_button = tk.Button(self.chat_frame, text="Gửi", width=10, command=self.send_message)
+        self.send_button = tk.Button(
+            self.chat_frame, text="Gửi", width=10, command=self.send_message)
         self.send_button.grid(row=3, column=2, sticky="e", pady=(8, 0))
 
-        # Grid weights
+        # Cấu hình trọng số (weight) cho các hàng và cột trong chat_frame
+        # - Hàng 2 sẽ mở rộng theo chiều dọc khi thay đổi kích thước cửa sổ
         self.chat_frame.rowconfigure(2, weight=1)
+
+        # - Cột 0 sẽ mở rộng theo chiều ngang, chiếm không gian còn lại
         self.chat_frame.columnconfigure(0, weight=1)
+
+        # - Cột 1 và cột 2 không mở rộng (giữ kích thước cố định)
         self.chat_frame.columnconfigure(1, weight=0)
         self.chat_frame.columnconfigure(2, weight=0)
 
-        # Configure tags once
+        # configure tags once
         self.chat_window.configure(font=("Segoe UI", 10))
-        self.chat_window.tag_config("me", foreground="#1b76d1", font=("Segoe UI", 10, "bold"))
-        self.chat_window.tag_config("pm_me", foreground="#6a1b9a", font=("Segoe UI", 10, "bold"))
-        self.chat_window.tag_config("pm_in", foreground="#2e7d32", font=("Segoe UI", 10, "bold"))
-        self.chat_window.tag_config("sys", foreground="#888888", font=("Segoe UI", 9, "italic"))
+        self.chat_window.tag_config(
+            "me", foreground="#1b76d1", font=("Segoe UI", 10, "bold"))
+        self.chat_window.tag_config(
+            "pm_me", foreground="#6a1b9a", font=("Segoe UI", 10, "bold"))
+        self.chat_window.tag_config(
+            "pm_in", foreground="#2e7d32", font=("Segoe UI", 10, "bold"))
+        self.chat_window.tag_config(
+            "sys", foreground="#888888", font=("Segoe UI", 9, "italic"))
 
-        # Start background receive thread
+        # start background receive thread
         threading.Thread(target=self.receive_messages, daemon=True).start()
         self.safe_append("[Hệ thống]: Đăng nhập thành công.\n", "sys")
 
@@ -142,85 +180,142 @@ class ChatClientApp:
         self.client_socket.connect((host, port))
 
     def handle_register(self):
-        username = self.entry_username.get().strip()
-        password = self.entry_password.get().strip()
-        if not username or not password:
-            messagebox.showwarning("Thiếu thông tin", "Hãy nhập Tên đăng nhập và Mật khẩu.")
-            return
-        try:
-            self._connect()
-            self.send_json({"type": "register", "username": username, "password": password})
-            resp = next(self.iter_json_lines(), None)
-            if not resp or resp.get("type") != "register_result":
-                raise RuntimeError("Phản hồi đăng ký không hợp lệ")
-            if not resp.get("ok"):
-                self.client_socket.close()
-                self.client_socket = None
-                messagebox.showerror("Đăng ký thất bại", resp.get("message", "Không xác định"))
-                return
-            # Nếu đăng ký ok, tiếp tục login ngay
-            self.username = username
-            self.send_json({"type": "login", "username": username, "password": password})
-            login_resp = next(self.iter_json_lines(), None)
-            if login_resp and login_resp.get("ok"):
-                self.connected = True
-                self.build_chat_ui()
-            else:
-                self.client_socket.close()
-                self.client_socket = None
-                messagebox.showerror("Đăng nhập thất bại", (login_resp or {}).get("message", "Không xác định"))
-        except Exception as e:
-            if self.client_socket:
-                try:
-                    self.client_socket.close()
-                except:
-                    pass
+     """
+    Xử lý đăng ký tài khoản khi người dùng nhấn nút Register.
+    Bước thực hiện:
+    1. Lấy username và password từ các ô nhập liệu.
+    2. Kiểm tra xem có thiếu thông tin không, nếu thiếu thì cảnh báo và dừng.
+    3. Kết nối tới server (_connect).
+    4. Gửi gói JSON đăng ký {"type": "register", "username": ..., "password": ...}.
+    5. Nhận phản hồi từ server:
+       - Nếu không nhận được phản hồi hoặc phản hồi không hợp lệ → raise lỗi.
+       - Nếu đăng ký thất bại → đóng socket, thông báo lỗi.
+    6. Nếu đăng ký thành công → tự động gửi gói login ngay:
+       - Nhận phản hồi login.
+       - Nếu login thành công → đánh dấu connected=True và xây dựng giao diện chat.
+       - Nếu login thất bại → đóng socket, thông báo lỗi.
+    7. Nếu có lỗi trong quá trình kết nối hoặc đăng ký → đóng socket nếu còn mở, báo lỗi.
+    """
+    # Lấy thông tin username và password
+    username = self.entry_username.get().strip()
+    password = self.entry_password.get().strip()
+
+    # Kiểm tra thông tin bắt buộc
+    if not username or not password:
+        messagebox.showwarning("Thiếu thông tin", "Hãy nhập Tên đăng nhập và Mật khẩu.")
+        return
+
+    try:
+        # Kết nối tới server
+        self._connect()
+
+        # Gửi gói đăng ký
+        self.send_json({"type": "register", "username": username, "password": password})
+
+        # Nhận phản hồi từ server
+        resp = next(self.iter_json_lines(), None)
+        if not resp or resp.get("type") != "register_result":
+            raise RuntimeError("Phản hồi đăng ký không hợp lệ")
+
+        # Nếu đăng ký thất bại
+        if not resp.get("ok"):
+            self.client_socket.close()
             self.client_socket = None
-            messagebox.showerror("Lỗi đăng ký", f"{e}")
-
-    def handle_login(self):
-        username = self.entry_username.get().strip()
-        password = self.entry_password.get().strip()
-        if not username or not password:
-            messagebox.showwarning("Thiếu thông tin", "Hãy nhập Tên đăng nhập và Mật khẩu.")
+            messagebox.showerror("Đăng ký thất bại", resp.get("message", "Không xác định"))
             return
 
-        try:
-            self._connect()
-            self.username = username
-            self.send_json({"type": "login", "username": username, "password": password})
-            resp = next(self.iter_json_lines(), None)
-            if not resp or resp.get("type") != "login_result":
-                raise RuntimeError("Phản hồi đăng nhập không hợp lệ")
-            if not resp.get("ok"):
-                self.client_socket.close()
-                self.client_socket = None
-                messagebox.showerror("Đăng nhập thất bại", resp.get("message", "Không xác định"))
-                return
-
+        # Nếu đăng ký thành công, tiếp tục login ngay
+        self.username = username
+        self.send_json({"type": "login", "username": username, "password": password})
+        login_resp = next(self.iter_json_lines(), None)
+        if login_resp and login_resp.get("ok"):
             self.connected = True
             self.build_chat_ui()
-
-        except Exception as e:
-            self.connected = False
-            if self.client_socket:
-                try:
-                    self.client_socket.close()
-                except:
-                    pass
+        else:
+            self.client_socket.close()
             self.client_socket = None
-            messagebox.showerror("Không thể kết nối", f"Lỗi: {e}")
+            messagebox.showerror(
+                "Đăng nhập thất bại",
+                (login_resp or {}).get("message", "Không xác định")
+            )
 
+    except Exception as e:
+        # Xử lý lỗi kết nối/đăng ký
+        if self.client_socket:
+            try:
+                self.client_socket.close()
+            except:
+                pass
+        self.client_socket = None
+        messagebox.showerror("Lỗi đăng ký", f"{e}")
+
+    def handle_login(self):
+     """
+    Xử lý đăng nhập khi người dùng nhấn nút Login hoặc Enter.
+    Bước thực hiện:
+    1. Lấy username và password từ các ô nhập liệu.
+    2. Kiểm tra xem có thiếu thông tin không, nếu thiếu thì cảnh báo và dừng.
+    3. Kết nối tới server (_connect).
+    4. Gửi gói JSON đăng nhập {"type": "login", "username": ..., "password": ...}.
+    5. Nhận phản hồi từ server:
+       - Nếu không nhận được phản hồi hoặc phản hồi không hợp lệ → raise lỗi.
+       - Nếu đăng nhập thất bại → đóng socket, thông báo lỗi.
+    6. Nếu đăng nhập thành công → đánh dấu connected=True và xây dựng giao diện chat.
+    7. Nếu có lỗi trong quá trình kết nối hoặc đăng nhập → đóng socket nếu còn mở, báo lỗi.
+    """
+    # Lấy thông tin username và password
+    username = self.entry_username.get().strip()
+    password = self.entry_password.get().strip()
+
+    # Kiểm tra thông tin bắt buộc
+    if not username or not password:
+        messagebox.showwarning("Thiếu thông tin", "Hãy nhập Tên đăng nhập và Mật khẩu.")
+        return
+
+    try:
+        # Kết nối tới server
+        self._connect()
+        self.username = username
+
+        # Gửi gói login
+        self.send_json({"type": "login", "username": username, "password": password})
+
+        # Nhận phản hồi từ server
+        resp = next(self.iter_json_lines(), None)
+        if not resp or resp.get("type") != "login_result":
+            raise RuntimeError("Phản hồi đăng nhập không hợp lệ")
+
+        # Nếu đăng nhập thất bại
+        if not resp.get("ok"):
+            self.client_socket.close()
+            self.client_socket = None
+            messagebox.showerror("Đăng nhập thất bại", resp.get("message", "Không xác định"))
+            return
+
+        # Đăng nhập thành công
+        self.connected = True
+        self.build_chat_ui()  # Xây dựng giao diện chat
+
+    except Exception as e:
+        # Xử lý lỗi kết nối/đăng nhập
+        self.connected = False
+        if self.client_socket:
+            try:
+                self.client_socket.close()
+            except:
+                pass
+        self.client_socket = None
+        messagebox.showerror("Không thể kết nối", f"Lỗi: {e}")
     # =========================================================
     # CHAT ACTIONS
     # =========================================================
     def toggle_pm_target(self, event=None):
-        # double click on a user -> set/unset PM target
+        #  Nhấp đúp để bật/tắt người nhận tin nhắn riêng (PM target)
         try:
             sel = self.users_list.get(self.users_list.curselection())
         except:
             return
-        # ignore selecting myself
+        # Bỏ qua nếu nhấp vào chính tài khoản của mình.
         if sel == self.username:
             self.pm_target = None
             self.pm_label.config(text="Chế độ: Công khai", fg="#555")
@@ -314,32 +409,49 @@ class ChatClientApp:
     # UI HELPERS
     # =========================================================
     def safe_append(self, text, tag=None):
-        """Append text to chat window safely (must be called in main thread)."""
-        self.chat_window.configure(state="normal")
-        if tag:
-            self.chat_window.insert("end", text, tag)
-        else:
-            self.chat_window.insert("end", text)
-        self.chat_window.see("end")
-        self.chat_window.configure(state="disabled")
+     """
+    Ghi văn bản vào cửa sổ chat một cách an toàn.
+    Lưu ý: phải gọi trong main thread của Tkinter để tránh lỗi giao diện.
+
+    Tham số:
+    - text: chuỗi cần hiển thị.
+    - tag: (tùy chọn) tên tag để áp dụng style (màu sắc, font, v.v.).
+
+    Bước thực hiện:
+    1. Cho phép chỉnh sửa chat_window (state="normal").
+    2. Chèn text vào cuối nội dung, có hoặc không có tag.
+    3. Cuộn xuống cuối để luôn hiển thị tin nhắn mới.
+    4. Khóa lại chat_window (state="disabled") để người dùng không chỉnh sửa.
+    """
+    self.chat_window.configure(state="normal")
+    if tag:
+        self.chat_window.insert("end", text, tag)
+    else:
+        self.chat_window.insert("end", text)
+    self.chat_window.see("end")
+    self.chat_window.configure(state="disabled")
 
     def update_online_users(self, users):
         self.users_list.delete(0, "end")
         for u in users:
             if u:
                 self.users_list.insert("end", u)
-        # nếu mục tiêu PM không còn online thì chuyển về công khai
+        #Nếu người này đã là PM target hiện tại → hủy chọn (trở về chế độ công khai)
         if self.pm_target and self.pm_target not in users:
             self.pm_target = None
             self.pm_label.config(text="Chế độ: Công khai", fg="#555")
 
-    # =========================================================
-    # APP LIFECYCLE
-    # =========================================================
+   # APP LIFECYCLE: Vòng đời ứng dụng
+# Bao gồm các trạng thái và sự kiện mà ứng dụng trải qua từ khi khởi chạy đến khi đóng:
+# - Khởi tạo (Init)
+# - Hoạt động (Active / Running)
+# - Tạm dừng (Paused / Background)
+# - Dừng / Đóng (Stopped / Terminated)
+# Quản lý vòng đời giúp xử lý tài nguyên, lưu trạng thái, và phản hồi sự kiện đúng thời điểm
     def on_close(self):
         try:
             if self.connected and self.client_socket:
-                # gửi tín hiệu quit cho đẹp (server sẽ cleanup)
+                # Gửi tín hiệu "quit" để thoát một cách gọn gàng, server sẽ thực hiện cleanup
                 self.send_json({"type": "quit"})
         except:
             pass

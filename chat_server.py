@@ -9,7 +9,7 @@ USERS_FILE = Path("users.json")
 def load_users():
     if USERS_FILE.exists():
         return json.loads(USERS_FILE.read_text(encoding="utf-8"))
-    # tài khoản mẫu lần đầu
+  # Tài khoản mẫu được sử dụng lần đầu
     users = {"admin": "admin123", "user1": "pass1", "user2": "pass2"}
     USERS_FILE.write_text(json.dumps(users, ensure_ascii=False, indent=2), encoding="utf-8")
     return users
@@ -21,17 +21,27 @@ def send_json(sock, obj):
     data = (json.dumps(obj, ensure_ascii=False) + "\n").encode("utf-8")
     sock.sendall(data)
 
-def iter_json_lines(sock):
-    """Đọc từng JSON line từ socket."""
-    f = sock.makefile("r", encoding="utf-8", newline="\n")
-    for line in f:
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            yield json.loads(line)
-        except json.JSONDecodeError:
-            yield {"type": "system", "text": f"JSON không hợp lệ: {line[:50]}..."}
+def iter_json_packets(sock):
+    """
+    Đọc từng gói JSON từ socket hoặc file-like object.
+    - Bỏ qua dòng rỗng.
+    - Nếu JSON không hợp lệ, trả về gói thông báo lỗi hệ thống.
+    """
+    # Chuyển socket thành file-like object để đọc dòng
+    with sock.makefile("r", encoding="utf-8", newline="\n") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue  # Bỏ qua dòng rỗng
+            try:
+                # Trả về dict JSON nếu hợp lệ
+                yield json.loads(line)
+            except json.JSONDecodeError:
+                # Nếu lỗi JSON, trả về gói thông báo lỗi
+                yield {
+                    "type": "system",
+                    "text": f"JSON không hợp lệ: {line[:50]}..."
+                }
 
 class ChatServer:
     def __init__(self, host='127.0.0.1', port=5555):
@@ -58,7 +68,7 @@ class ChatServer:
     def handle_client(self, client_socket):
         username = None
         try:
-            # Bước 1: chờ gói register/login
+            # Bước 1: Chờ nhận gói dữ liệu register hoặc login từ client
             first = next(iter_json_lines(client_socket), None)
             if not first:
                 client_socket.close(); return
@@ -70,9 +80,9 @@ class ChatServer:
                 send_json(client_socket, {"type": "register_result", "ok": ok, "message": msg})
                 if not ok:
                     client_socket.close(); return
-                # cho phép đăng nhập tiếp bằng gói login
+               # Cho phép người dùng tiếp tục đăng nhập bằng gói login
 
-                # đọc gói tiếp theo (login)
+                # Đọc gói dữ liệu tiếp theo (login)
                 first = next(iter_json_lines(client_socket), None)
                 if not first:
                     client_socket.close(); return
@@ -88,7 +98,7 @@ class ChatServer:
             if not ok:
                 client_socket.close(); return
 
-            # đăng nhập thành công
+            # Đăng nhập thành công
             with self.lock:
                 self.clients[client_socket] = username
                 self.user_sockets[username] = client_socket
@@ -124,7 +134,7 @@ class ChatServer:
         except Exception as e:
             print(f"[ERROR] {e}")
         finally:
-            # cleanup
+            # Cleanup
             with self.lock:
                 if client_socket in self.clients:
                     uname = self.clients.pop(client_socket)
@@ -139,7 +149,7 @@ class ChatServer:
                 self.broadcast_system(f"[{uname}] đã rời khỏi phòng chat!", exclude=None)
                 self.send_presence()
 
-    # ---------- helpers ----------
+    # ---------- Helpers ----------
     def handle_register(self, username, password):
         if not username or not password:
             return False, "Thiếu username/password"
@@ -159,16 +169,28 @@ class ChatServer:
                 return False, "Tài khoản đang đăng nhập ở nơi khác"
         return True, "Đăng nhập thành công"
 
-    def broadcast(self, obj, exclude=None):
-        with self.lock:
-            targets = list(self.clients.items())
-        for sock, uname in targets:
-            if exclude and uname == exclude:
-                continue
-            try:
-                send_json(sock, obj)
-            except:
-                pass
+def broadcast(self, message, exclude=None):
+    """
+    Gửi message (dict JSON) tới tất cả client đang kết nối.
+    - exclude: tên người dùng để bỏ qua khi gửi (không gửi cho họ)
+    """
+    # Lấy danh sách client hiện tại (sao chép để tránh thay đổi khi lặp)
+    with self.lock:
+        targets = list(self.clients.items())  # [(socket, username), ...]
+
+    for sock, uname in targets:
+        # Bỏ qua user cần exclude
+        if exclude and uname == exclude:
+            continue
+
+        try:
+            # Gửi gói JSON tới client
+            send_json(sock, message)
+        except Exception as e:
+            # Nếu gửi thất bại, bỏ qua để không ảnh hưởng các client khác
+            # Có thể log lỗi ở đây nếu muốn
+            # print(f"Lỗi khi gửi tới {uname}: {e}")
+            pass
 
     def broadcast_system(self, text, exclude=None):
         self.broadcast({"type": "system", "text": text}, exclude=exclude)
@@ -179,20 +201,32 @@ class ChatServer:
         self.broadcast({"type": "presence", "users": online})
 
     def send_dm(self, from_user, to_user, obj):
-        with self.lock:
-            to_sock = self.user_sockets.get(to_user)
-            from_sock = self.user_sockets.get(from_user)
-        if to_sock:
-            try:
-                send_json(to_sock, obj)  # tới người nhận
-            except:
-                pass
-        # gửi bản sao cho người gửi (để họ thấy PM đã gửi)
-        if from_sock:
-            try:
-                send_json(from_sock, obj)
-            except:
-                pass
+    
+     """ Gửi tin nhắn riêng (Direct Message) từ from_user tới to_user.
+    - Đảm bảo thread-safe bằng self.lock khi truy xuất user_sockets.
+    - Nếu to_user đang online, gửi gói JSON tới họ.
+    - Đồng thời gửi bản sao gói JSON cho from_user để họ thấy PM đã được gửi.""" 
+    
+
+    # Lấy socket của người nhận và người gửi
+    with self.lock:
+        to_sock = self.user_sockets.get(to_user)
+        from_sock = self.user_sockets.get(from_user)
+
+    # Gửi tới người nhận nếu họ online
+    if to_sock:
+        try:
+            send_json(to_sock, obj)
+        except Exception as e:
+            # Bỏ qua lỗi gửi
+            pass
+
+    # Gửi bản sao cho người gửi để họ thấy tin nhắn đã gửi
+    if from_sock:
+        try:
+            send_json(from_sock, obj)
+        except Exception as e:
+            pass
 
 if __name__ == "__main__":
     server = ChatServer()
