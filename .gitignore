@@ -1,0 +1,60 @@
+# ===== Python cache & build =====
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.log
+
+# ===== Virtual environments =====
+venv/
+env/
+.venv/
+
+# ===== User data & secrets =====
+users.json
+*.sqlite3
+*.db
+*.env
+*.pem
+
+# ===== IDE / System =====
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ===== Temporary / Backup =====
+*.bak
+*.tmp
+*.test
+# ===== Python cache & build =====
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.log
+
+# ===== Virtual environments =====
+venv/
+env/
+.venv/
+
+# ===== User data & secrets =====
+users.json
+*.sqlite3
+*.db
+*.env
+*.pem
+
+# ===== IDE / System =====
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ===== Temporary / Backup =====
+*.bak
+*.tmp
+*.test
