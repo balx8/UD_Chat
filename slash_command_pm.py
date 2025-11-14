@@ -1,4 +1,7 @@
-    def send_message(self):
+import tkinter as tk
+from tkinter import messagebox
+
+def send_message(self):
         if not self.connected or not self.client_socket:
             messagebox.showwarning("Chưa kết nối", "Bạn chưa kết nối tới server.")
             return
@@ -30,6 +33,9 @@
                 self.safe_append(f"[Bạn]: {msg}\n", "me")
 
             self.message_entry.delete(0, tk.END)
+
+        except Exception as e:
+            self.safe_append(f"[Hệ thống]: Lỗi khi gửi tin nhắn: {e}\n", "sys")
 
         except Exception as e:
             self.safe_append(f"[Hệ thống]: Lỗi khi gửi tin nhắn: {e}\n", "sys")
