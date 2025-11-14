@@ -1,5 +1,7 @@
-    def toggle_pm_target(self, event=None):
-        try:
+import tkinter as tk
+
+def toggle_pm_target(self, event=None):
+    try:
             index = self.users_list.curselection()
             if not index:
                 return
