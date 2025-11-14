@@ -7,7 +7,7 @@ def toggle_pm_target(self, event=None):
              return
         sel = self.users_list.get(index[0])
     except:
-        return
+         return
 
     if sel == self.username:
         self.pm_target = None
