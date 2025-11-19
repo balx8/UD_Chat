@@ -1,3 +1,5 @@
+[![CI](https://github.com/balx8/UD_Chat/actions/workflows/ci.yml/badge.svg)](https://github.com/balx8/UD_Chat/actions/workflows/ci.yml)
+
 # Chat App (TCP + JSON Lines, Tkinter Client)
 
 Ứng dụng chat client–server đơn giản dùng TCP socket với giao thức **JSON Lines**. Client viết bằng **Tkinter** (Python GUI), server thuần Python, hỗ trợ **đăng ký/đăng nhập**, **chat công khai**, **tin nhắn riêng (DM)**, và **danh sách người online**.
