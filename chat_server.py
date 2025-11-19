@@ -3,6 +3,7 @@ import threading
 import json
 from datetime import datetime
 from pathlib import Path
+import bcrypt  # <- thêm bcrypt
 
 from version import __version__  # lấy version dùng chung
 
@@ -64,7 +65,7 @@ class ChatServer:
 
         self.clients = {}          # {socket: username}
         self.user_sockets = {}     # {username: socket}
-        self.users = load_users()  # {username: password}
+        self.users = load_users()
         self.lock = threading.Lock()
 
     # =====================================================
@@ -73,8 +74,7 @@ class ChatServer:
     def start(self):
         self.server.bind((self.host, self.port))
         self.server.listen()
-        print(f"[SERVER] Đang chạy trên {self.host}:{self.port}")
-        print("[SERVER] Chờ kết nối...")
+        print(f"[SERVER] Chạy trên {self.host}:{self.port}")
 
         while True:
             try:
@@ -124,7 +124,7 @@ class ChatServer:
     def handle_client(self, client_socket):
         username = None
         try:
-            # Bước 1: Chờ nhận gói dữ liệu register hoặc login từ client
+            # Lấy gói đầu tiên
             first = next(iter_json_lines(client_socket), None)
             if not first:
                 client_socket.close()
@@ -173,7 +173,12 @@ class ChatServer:
                 client_socket.close()
                 return
 
-            # Đăng nhập thành công
+            # ❗ IF LOGIN FAIL → NGẮT LUÔN
+            if not ok:
+                client_socket.close()
+                return
+
+            # ĐĂNG NHẬP THÀNH CÔNG
             with self.lock:
                 self.clients[client_socket] = username
                 self.user_sockets[username] = client_socket
@@ -202,6 +207,7 @@ class ChatServer:
                         exclude=None,
                     )
 
+                # ----- DM (tin nhắn riêng) -----
                 elif ptype == "dm":
                     to_user = str(packet.get("to", "")).strip()
                     text = str(packet.get("text", "")).strip()
@@ -220,6 +226,27 @@ class ChatServer:
                         },
                     )
 
+                    if not to_user:
+                        send_json(client_socket, {"type": "system", "text": "Bạn chưa chọn người nhận."})
+                        continue
+
+                    if to_user not in self.user_sockets:
+                        send_json(client_socket, {"type": "system", "text": f"User '{to_user}' không online."})
+                        continue
+
+                    ts = datetime.now().strftime("%H:%M:%S")
+
+                    obj = {
+                        "type": "dm",
+                        "from": username,
+                        "to": to_user,
+                        "text": text,
+                        "ts": ts
+                    }
+
+                    self.send_dm(username, to_user, obj)
+
+                # ----- quit -----
                 elif ptype == "quit":
                     break
 
@@ -236,7 +263,7 @@ class ChatServer:
             print(f"[ERROR] {e}")
 
         finally:
-            # Cleanup
+            # cleanup
             with self.lock:
                 if client_socket in self.clients:
                     uname = self.clients.pop(client_socket)
@@ -274,7 +301,8 @@ class ChatServer:
         return True, "Đăng ký thành công"
 
     def handle_login(self, username, password):
-        if username not in self.users or self.users[username] != password:
+        stored = self.users.get(username)
+        if stored is None:
             return False, "Sai tài khoản hoặc mật khẩu"
 
         with self.lock:
@@ -303,7 +331,7 @@ class ChatServer:
                 pass
 
     def broadcast_system(self, text, exclude=None):
-        self.broadcast({"type": "system", "text": text}, exclude=exclude)
+        self.broadcast({"type": "system", "text": text}, exclude)
 
     def send_presence(self):
         with self.lock:
