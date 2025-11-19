@@ -6,12 +6,14 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter.scrolledtext import ScrolledText
 
+from version import __version__  # dùng chung version với server
+
 
 class ChatClientApp:
     def __init__(self):
         # ---- single Tk root ----
         self.root = tk.Tk()
-        self.root.title("Chat App")
+        self.root.title(f"UD Chat v{__version__}")
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
         # socket & state
@@ -59,10 +61,7 @@ class ChatClientApp:
             try:
                 yield json.loads(line)
             except json.JSONDecodeError:
-                yield {
-                    "type": "system",
-                    "text": f"JSON không hợp lệ: {line[:50]}..."
-                }
+                yield {"type": "system", "text": f"JSON không hợp lệ: {line[:50]}..."}
 
     # =========================================================
     # UI BUILDERS
@@ -74,7 +73,7 @@ class ChatClientApp:
         title = tk.Label(
             self.login_frame,
             text="Đăng nhập / Đăng ký - Chat App",
-            font=("Segoe UI", 14, "bold")
+            font=("Segoe UI", 14, "bold"),
         )
         title.grid(row=0, column=0, columnspan=3, pady=(0, 12))
 
@@ -99,12 +98,10 @@ class ChatClientApp:
         self.entry_username.focus_set()
 
         self.btn_register = tk.Button(
-            self.login_frame, text="Đăng ký", width=12,
-            command=self.handle_register
+            self.login_frame, text="Đăng ký", width=12, command=self.handle_register
         )
         self.btn_login = tk.Button(
-            self.login_frame, text="Đăng nhập", width=12,
-            command=self.handle_login
+            self.login_frame, text="Đăng nhập", width=12, command=self.handle_login
         )
         self.btn_register.grid(row=4, column=0, pady=(10, 0))
         self.btn_login.grid(row=4, column=1, pady=(10, 0), sticky="w")
@@ -118,24 +115,21 @@ class ChatClientApp:
         if self.login_frame is not None:
             self.login_frame.destroy()
 
-        self.root.title(f"Chat App - {self.username}")
+        self.root.title(f"UD Chat v{__version__} - {self.username}")
         self.chat_frame = tk.Frame(self.root, padx=10, pady=10)
         self.chat_frame.pack(fill="both", expand=True)
 
         header = tk.Label(
             self.chat_frame,
             text=f"💬 Phòng Chat - Xin chào {self.username}!",
-            font=("Segoe UI", 12, "bold")
+            font=("Segoe UI", 12, "bold"),
         )
         header.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
 
         # left: messages
-        tk.Label(self.chat_frame, text="Tin nhắn:").grid(
-            row=1, column=0, sticky="w"
-        )
+        tk.Label(self.chat_frame, text="Tin nhắn:").grid(row=1, column=0, sticky="w")
         self.chat_window = ScrolledText(
-            self.chat_frame, height=18, width=80,
-            state="disabled", wrap="word"
+            self.chat_frame, height=18, width=80, state="disabled", wrap="word"
         )
         self.chat_window.grid(
             row=2, column=0, columnspan=2, sticky="nsew", padx=(0, 8)
@@ -161,8 +155,7 @@ class ChatClientApp:
         self.pm_label.grid(row=3, column=1, sticky="w", padx=(8, 0))
 
         self.send_button = tk.Button(
-            self.chat_frame, text="Gửi", width=10,
-            command=self.send_message
+            self.chat_frame, text="Gửi", width=10, command=self.send_message
         )
         self.send_button.grid(row=3, column=2, sticky="e", pady=(8, 0))
 
@@ -188,9 +181,7 @@ class ChatClientApp:
         )
 
         # start background receive thread
-        threading.Thread(
-            target=self.receive_messages, daemon=True
-        ).start()
+        threading.Thread(target=self.receive_messages, daemon=True).start()
         self.safe_append("[Hệ thống]: Đăng nhập thành công.\n", "sys")
 
     # =========================================================
@@ -211,49 +202,42 @@ class ChatClientApp:
 
     def handle_register(self):
         """
-        Xử lý đăng ký rồi login luôn.
+        Xử lý đăng ký + login ngay sau khi đăng ký.
         """
         username = self.entry_username.get().strip()
         password = self.entry_password.get().strip()
 
         if not username or not password:
             messagebox.showwarning(
-                "Thiếu thông tin",
-                "Hãy nhập Tên đăng nhập và Mật khẩu."
+                "Thiếu thông tin", "Hãy nhập Tên đăng nhập và Mật khẩu."
             )
             return
 
         try:
             self._connect()
 
-            # gửi đăng ký
-            self.send_json({
-                "type": "register",
-                "username": username,
-                "password": password
-            })
+            # gửi gói đăng ký
+            self.send_json(
+                {"type": "register", "username": username, "password": password}
+            )
 
             resp = next(self.iter_json_lines(), None)
             if not resp or resp.get("type") != "register_result":
                 raise RuntimeError("Phản hồi đăng ký không hợp lệ")
 
             if not resp.get("ok"):
-                # fail
                 self.client_socket.close()
                 self.client_socket = None
                 messagebox.showerror(
-                    "Đăng ký thất bại",
-                    resp.get("message", "Không xác định")
+                    "Đăng ký thất bại", resp.get("message", "Không xác định")
                 )
                 return
 
             # đăng ký ok -> login luôn
             self.username = username
-            self.send_json({
-                "type": "login",
-                "username": username,
-                "password": password
-            })
+            self.send_json(
+                {"type": "login", "username": username, "password": password}
+            )
             login_resp = next(self.iter_json_lines(), None)
             if login_resp and login_resp.get("ok"):
                 self.connected = True
@@ -263,7 +247,7 @@ class ChatClientApp:
                 self.client_socket = None
                 messagebox.showerror(
                     "Đăng nhập thất bại",
-                    (login_resp or {}).get("message", "Không xác định")
+                    (login_resp or {}).get("message", "Không xác định"),
                 )
 
         except Exception as e:
@@ -277,15 +261,14 @@ class ChatClientApp:
 
     def handle_login(self):
         """
-        Xử lý đăng nhập.
+        Xử lý đăng nhập khi bấm nút Login hoặc Enter.
         """
         username = self.entry_username.get().strip()
         password = self.entry_password.get().strip()
 
         if not username or not password:
             messagebox.showwarning(
-                "Thiếu thông tin",
-                "Hãy nhập Tên đăng nhập và Mật khẩu."
+                "Thiếu thông tin", "Hãy nhập Tên đăng nhập và Mật khẩu."
             )
             return
 
@@ -293,11 +276,9 @@ class ChatClientApp:
             self._connect()
             self.username = username
 
-            self.send_json({
-                "type": "login",
-                "username": username,
-                "password": password
-            })
+            self.send_json(
+                {"type": "login", "username": username, "password": password}
+            )
 
             resp = next(self.iter_json_lines(), None)
             if not resp or resp.get("type") != "login_result":
@@ -307,8 +288,7 @@ class ChatClientApp:
                 self.client_socket.close()
                 self.client_socket = None
                 messagebox.showerror(
-                    "Đăng nhập thất bại",
-                    resp.get("message", "Không xác định")
+                    "Đăng nhập thất bại", resp.get("message", "Không xác định")
                 )
                 return
 
@@ -329,9 +309,6 @@ class ChatClientApp:
     # CHAT ACTIONS
     # =========================================================
     def toggle_pm_target(self, event=None):
-        """
-        Nhấp đúp vào user để bật/tắt PM tới user đó.
-        """
         try:
             sel = self.users_list.get(self.users_list.curselection())
         except Exception:
@@ -347,9 +324,7 @@ class ChatClientApp:
             self.pm_label.config(text="Chế độ: Công khai", fg="#555")
         else:
             self.pm_target = sel
-            self.pm_label.config(
-                text=f"Chế độ: Riêng → {sel}", fg="#6a1b9a"
-            )
+            self.pm_label.config(text=f"Chế độ: Riêng → {sel}", fg="#6a1b9a")
 
     def send_message(self):
         if not self.connected or not self.client_socket:
@@ -364,11 +339,9 @@ class ChatClientApp:
 
         try:
             if self.pm_target:
-                self.send_json({
-                    "type": "dm",
-                    "to": self.pm_target,
-                    "text": msg
-                })
+                self.send_json(
+                    {"type": "dm", "to": self.pm_target, "text": msg}
+                )
                 self.safe_append(
                     f"[PM tới {self.pm_target}]: {msg}\n", "pm_me"
                 )
@@ -378,15 +351,13 @@ class ChatClientApp:
                     if len(parts) < 3:
                         self.safe_append(
                             "[Hệ thống]: Cú pháp: /pm <user> <nội dung>\n",
-                            "sys"
+                            "sys",
                         )
                         return
                     _, to_user, text = parts
-                    self.send_json({
-                        "type": "dm",
-                        "to": to_user,
-                        "text": text
-                    })
+                    self.send_json(
+                        {"type": "dm", "to": to_user, "text": text}
+                    )
                     self.safe_append(
                         f"[PM tới {to_user}]: {text}\n", "pm_me"
                     )
@@ -401,10 +372,7 @@ class ChatClientApp:
             )
 
     def receive_messages(self):
-        """
-        Nhận message từ server trong thread nền,
-        mọi cập nhật UI dùng root.after để an toàn.
-        """
+        """Nhận dữ liệu từ server trong thread nền."""
         try:
             for packet in self.iter_json_lines():
                 ptype = packet.get("type")
@@ -414,14 +382,13 @@ class ChatClientApp:
                         0,
                         lambda p=packet: self.safe_append(
                             p.get("text", "") + "\n", "sys"
-                        )
+                        ),
                     )
 
                 elif ptype == "presence":
                     users = packet.get("users", [])
                     self.root.after(
-                        0,
-                        lambda u=users: self.update_online_users(u)
+                        0, lambda u=users: self.update_online_users(u)
                     )
 
                 elif ptype == "chat":
@@ -430,7 +397,8 @@ class ChatClientApp:
                     ts = packet.get("ts", "")
                     line = (
                         f"[{ts}] {frm}: {text}\n"
-                        if ts else f"{frm}: {text}\n"
+                        if ts
+                        else f"{frm}: {text}\n"
                     )
                     self.root.after(
                         0, lambda l=line: self.safe_append(l)
@@ -444,20 +412,22 @@ class ChatClientApp:
                     if frm != self.username and to == self.username:
                         line = (
                             f"[{ts}] [PM từ {frm}]: {text}\n"
-                            if ts else f"[PM từ {frm}]: {text}\n"
+                            if ts
+                            else f"[PM từ {frm}]: {text}\n"
                         )
                         self.root.after(
                             0,
-                            lambda l=line: self.safe_append(l, "pm_in")
+                            lambda l=line: self.safe_append(l, "pm_in"),
                         )
                     else:
                         line = (
                             f"[{ts}] [PM tới {to}]: {text}\n"
-                            if ts else f"[PM tới {to}]: {text}\n"
+                            if ts
+                            else f"[PM tới {to}]: {text}\n"
                         )
                         self.root.after(
                             0,
-                            lambda l=line: self.safe_append(l, "pm_me")
+                            lambda l=line: self.safe_append(l, "pm_me"),
                         )
 
         except Exception as e:
@@ -465,7 +435,7 @@ class ChatClientApp:
                 0,
                 lambda: self.safe_append(
                     f"[Hệ thống]: Lỗi nhận dữ liệu: {e}\n", "sys"
-                )
+                ),
             )
         finally:
             self.connected = False
@@ -479,16 +449,14 @@ class ChatClientApp:
                 0,
                 lambda: self.safe_append(
                     "[Hệ thống]: Mất kết nối tới server.\n", "sys"
-                )
+                ),
             )
 
     # =========================================================
     # UI HELPERS
     # =========================================================
     def safe_append(self, text, tag=None):
-        """
-        Ghi văn bản vào cửa sổ chat một cách an toàn.
-        """
+        """Ghi văn bản vào cửa sổ chat một cách an toàn."""
         if not self.chat_window:
             return
         self.chat_window.configure(state="normal")
@@ -515,9 +483,6 @@ class ChatClientApp:
     # APP LIFECYCLE
     # =========================================================
     def on_close(self):
-        """
-        Được gọi khi đóng cửa sổ.
-        """
         try:
             if self.connected and self.client_socket:
                 self.send_json({"type": "quit"})
