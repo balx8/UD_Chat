@@ -3,8 +3,55 @@ import threading
 import json
 from datetime import datetime
 from pathlib import Path
+import bcrypt  # <- thêm bcrypt
 
 USERS_FILE = Path("users.json")
+
+# =====================================================
+# =============== AUTH / BCRYPT HELPERS ===============
+# =====================================================
+
+def hash_password(password: str) -> str:
+    """Hash mật khẩu bằng bcrypt, trả về string để lưu vào JSON."""
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def check_password(password: str, hashed: str) -> bool:
+    """So sánh mật khẩu người dùng nhập với hash trong users.json."""
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
+    except ValueError:
+        # Hash sai format -> coi như sai mật khẩu
+        return False
+
+
+def looks_like_bcrypt(s: str) -> bool:
+    """Nhận diện chuỗi trông giống bcrypt hay không (dùng cho migrate)."""
+    if not isinstance(s, str):
+        return False
+    return s.startswith("$2a$") or s.startswith("$2b$") or s.startswith("$2y$")
+
+
+def migrate_plaintext_users(users: dict) -> dict:
+    """
+    Nếu users.json đang dạng {"admin": "admin123"} (plaintext)
+    thì sẽ hash lại sang bcrypt và ghi đè file.
+    """
+    changed = False
+    for username, value in list(users.items()):
+        if isinstance(value, str) and not looks_like_bcrypt(value):
+            # plaintext -> hash lại
+            users[username] = hash_password(value)
+            changed = True
+
+    if changed:
+        USERS_FILE.write_text(
+            json.dumps(users, ensure_ascii=False, indent=2),
+            encoding="utf-8"
+        )
+        print("[INFO] Migrated plaintext passwords in users.json to bcrypt.")
+
+    return users
 
 # =====================================================
 # =============== JSON FUNCTIONS ======================
@@ -12,14 +59,29 @@ USERS_FILE = Path("users.json")
 
 def load_users():
     if USERS_FILE.exists():
-        return json.loads(USERS_FILE.read_text(encoding="utf-8"))
-    # Tạo tài khoản mẫu
-    users = {"admin": "admin123", "user1": "pass1", "user2": "pass2"}
-    USERS_FILE.write_text(json.dumps(users, ensure_ascii=False, indent=2), encoding="utf-8")
+        users = json.loads(USERS_FILE.read_text(encoding="utf-8"))
+        # tự migrate nếu còn plaintext
+        return migrate_plaintext_users(users)
+
+    # Tạo tài khoản mẫu (dùng bcrypt luôn)
+    users = {
+        "admin": hash_password("admin123"),
+        "user1": hash_password("pass1"),
+        "user2": hash_password("pass2"),
+    }
+    USERS_FILE.write_text(
+        json.dumps(users, ensure_ascii=False, indent=2),
+        encoding="utf-8"
+    )
     return users
 
+
 def save_users(users):
-    USERS_FILE.write_text(json.dumps(users, ensure_ascii=False, indent=2), encoding="utf-8")
+    USERS_FILE.write_text(
+        json.dumps(users, ensure_ascii=False, indent=2),
+        encoding="utf-8"
+    )
+
 
 def send_json(sock, obj):
     try:
@@ -27,6 +89,7 @@ def send_json(sock, obj):
         sock.sendall(data)
     except:
         pass
+
 
 def iter_json_packets(sock):
     """Đọc từng dòng JSON từ socket"""
@@ -41,7 +104,7 @@ def iter_json_packets(sock):
                 yield {"type": "system", "text": "JSON không hợp lệ!"}
 
 # =====================================================
-# =============== CHAT SERVER ==========================
+# =============== CHAT SERVER =========================
 # =====================================================
 
 class ChatServer:
@@ -199,14 +262,36 @@ class ChatServer:
             if username in self.users:
                 return False, "Tên đã tồn tại"
 
-            self.users[username] = password
+            # Lưu BCRYPT HASH, không lưu plaintext nữa
+            self.users[username] = hash_password(password)
             save_users(self.users)
 
         print(f"[REGISTER] {username} đã đăng ký")
         return True, "Đăng ký thành công"
 
     def handle_login(self, username, password):
-        if username not in self.users or self.users[username] != password:
+        stored = self.users.get(username)
+        if stored is None:
+            return False, "Sai tài khoản hoặc mật khẩu"
+
+        ok = False
+
+        if isinstance(stored, str):
+            if looks_like_bcrypt(stored):
+                # TH đã hash bằng bcrypt
+                ok = check_password(password, stored)
+            else:
+                # TH còn plaintext (rất ít sau migrate)
+                ok = (stored == password)
+                if ok:
+                    # Nâng cấp luôn user này lên bcrypt
+                    with self.lock:
+                        self.users[username] = hash_password(password)
+                        save_users(self.users)
+        else:
+            ok = False
+
+        if not ok:
             return False, "Sai tài khoản hoặc mật khẩu"
 
         # ❗CHẶN LOGIN TRÙNG
@@ -215,6 +300,11 @@ class ChatServer:
                 return False, "Tài khoản đang đăng nhập ở nơi khác"
 
         return True, "Đăng nhập thành công"
+
+    # =====================================================
+    # ================== BROADCAST / DM ===================
+    # =====================================================
+
     def broadcast(self, message, exclude=None):
         with self.lock:
             targets = list(self.clients.items())
@@ -241,6 +331,8 @@ class ChatServer:
             send_json(to_sock, obj)
         if from_sock:
             send_json(from_sock, obj)
+
+
 if __name__ == "__main__":
     print("=" * 50)
     print("CHAT SERVER (register/login + chat + dm + presence)")
